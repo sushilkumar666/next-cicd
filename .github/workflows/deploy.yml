@@ -31,7 +31,7 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/next-projects
+            cd next-projects
             git pull origin main
             npm install --production
             npm run build
