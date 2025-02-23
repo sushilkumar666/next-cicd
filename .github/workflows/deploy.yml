@@ -24,6 +24,14 @@ jobs:
       - name: Build Project
         run: npm run build
 
+      - name: Add SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/test
+          chmod 600 ~/.ssh/test
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.EC2_HOST }} "echo SSH Connected!"
+
+
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
