@@ -3,53 +3,36 @@ name: Deploy Next.js to EC2
 on:
   push:
     branches:
-      - main  # Jab bhi main branch pe push hoga, deploy chalega
+      - main  # Main branch pe push hote hi deploy hoga
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3  # GitHub repo ka latest code pull karega
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Project
+        run: npm run build
 
       - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
-          # username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.PRIVATE_KEY }}
           script: |
-            # EC2 pe project directory pe jao ya create karo
-            cd /home/ubuntu/next-projects || exit
-            if [ ! -d "nextjs-app" ]; then
-              git clone https://github.com/sushilkumar666/next-cicd.git next-cicd
-            fi
-            cd nextjs-app
-
-            # Latest code pull karo
+            cd /home/ubuntu/next-projects || git clone https://github.com/sushilkumar666/next-cicd.git next-cicd && cd next-cicd
             git pull origin main
-
-            # Node.js aur PM2 install karo agar nahi hai
-            if ! command -v node &> /dev/null; then
-              echo "Installing Node.js..."
-              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-              sudo apt install -y nodejs
-            fi
-
-            if ! command -v pm2 &> /dev/null; then
-              echo "Installing PM2..."
-              sudo npm install -g pm2
-            fi
-
-            # Install dependencies & build Next.js
             npm install
             npm run build
-
-            # Next.js ko PM2 se deploy karo
             pm2 restart next-cicd || pm2 start "npm start" --name "next-cicd"
-
-            # PM2 process ko save karo taki reboot pe bhi chale
-            pm2 save
-            pm2 startup
