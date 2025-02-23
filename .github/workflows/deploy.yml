@@ -24,16 +24,6 @@ jobs:
       - name: Build Project
         run: npm run build
 
-      - name: Add SSH Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/test
-          chmod 600 ~/.ssh/test
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/test
-          ssh -v -o StrictHostKeyChecking=no -i ~/.ssh/test ubuntu@${{ secrets.EC2_HOST }} "echo SSH Connected!"
-
-
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -41,8 +31,15 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu || git clone https://github.com/sushilkumar666/next-cicd.git  && cd next-cicd
-            git pull origin main
+            cd /home/ubuntu
+            if [ -d "next-cicd/.git" ]; then
+              cd next-cicd && git pull origin main
+            else
+              rm -rf next-cicd
+              git clone https://github.com/sushilkumar666/next-cicd.git
+              cd next-cicd
+            fi
             npm install
             npm run build
             pm2 restart next-cicd || pm2 start "npm start" --name "next-cicd"
+
